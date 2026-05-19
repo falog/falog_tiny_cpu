@@ -16,13 +16,17 @@ Rustで実装した最小構成のCPUエミュレータです。
 
 ### 割り算について
 
-このCPUでは比較命令が存在しないため、
-一般的な割り算（`a >= b` の判定を含む）は実装できません。
+### 割り算について
 
-減算の繰り返しによって近似的に表現することは可能ですが、
-割り切れる場合にのみ正しく動作します。
+このCPUはゼロ判定（JE）のみをサポートしており、
+大小比較（>=）を直接表現することができません。
 
-この制約を通して、命令セットの設計がアルゴリズムに与える影響を学ぶことができます。
+そのため、減算を用いた割り算アルゴリズムを
+正しく終了させることができず、
+現在の実装では結果は常に正しくなりません（多くの場合 0 になります）。
+
+この制約は、命令セットの表現力がアルゴリズムの正しさに
+どのような影響を与えるかを示しています。
 
 ---
 
@@ -42,14 +46,17 @@ and executes basic instructions such as ADD, SUB, JMP, and JE.
 
 ### About Division
 
-This CPU does not support comparison instructions,
-so general division (which requires checking `a >= b`) cannot be fully implemented.
+This CPU only supports zero-based branching (JE) and does not provide
+a way to express relational comparisons such as `>=`.
 
-Division can be approximated using repeated subtraction,
-but it only works correctly when the result is an exact integer.
+Because of this limitation, a correct division algorithm based on
+repeated subtraction cannot be properly terminated.
 
-This limitation demonstrates how instruction set design directly affects
-what kind of algorithms can be implemented.
+As a result, the current implementation does not produce correct results
+and often returns 0.
+
+This limitation highlights how the expressiveness of an instruction set
+affects the correctness of algorithms.
 
 ---
 
@@ -62,3 +69,4 @@ println!("2 + 3 = {}", cpu.run_add(2, 3));
 println!("5 - 2 = {}", cpu.run_sub(5, 2));
 println!("3 * 4 = {}", cpu.run_mul(3, 4));
 println!("10 / 2 = {}", cpu.run_div(10, 2));
+println!("7 / 2 = {}", cpu.run_div(7, 2));
