@@ -128,7 +128,7 @@ impl CPU {
             },
             Instruction {
                 opcode: Opcode::Je,
-                op1: 0,
+                op1: 1,
                 op2: 12,
             },
             Instruction {
@@ -166,7 +166,7 @@ impl CPU {
             },
             Instruction {
                 opcode: Opcode::Je,
-                op1: 0,
+                op1: 1,
                 op2: 12,
             },
             Instruction {
@@ -275,7 +275,9 @@ impl CPU {
                 self.pc = self.addr(inst.op2);
             }
             Opcode::Je => {
-                if self.zero_flag {
+                let r = self.reg(inst.op1);
+
+                if self.regs[r] == 0 {
                     self.pc = self.addr(inst.op2);
                 } else {
                     self.pc += 3;

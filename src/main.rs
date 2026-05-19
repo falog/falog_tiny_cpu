@@ -8,5 +8,4 @@ fn main() {
     println!("5 - 2 = {}", cpu.run_sub(5, 2));
     println!("3 * 4 = {}", cpu.run_mul(3, 4));
     println!("10 / 2 = {}", cpu.run_div(10, 2));
-    println!("7 / 2 = {}", cpu.run_div(7, 2));
 }
