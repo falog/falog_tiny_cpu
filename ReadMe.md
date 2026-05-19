@@ -16,14 +16,14 @@ Rustで実装した最小構成のCPUエミュレータです。
 
 ### 割り算について
 
-### 割り算について
-
 このCPUはゼロ判定（JE）のみをサポートしており、
 大小比較（>=）を直接表現することができません。
 
-そのため、減算を用いた割り算アルゴリズムを
-正しく終了させることができず、
-現在の実装では結果は常に正しくなりません（多くの場合 0 になります）。
+そのため、減算を用いた割り算アルゴリズムは
+「割り切れる場合」に限って正しく動作します。
+
+割り切れない場合（例: 7 / 2）は、
+終了条件を満たせず無限ループになります。
 
 この制約は、命令セットの表現力がアルゴリズムの正しさに
 どのような影響を与えるかを示しています。
@@ -49,11 +49,11 @@ and executes basic instructions such as ADD, SUB, JMP, and JE.
 This CPU only supports zero-based branching (JE) and does not provide
 a way to express relational comparisons such as `>=`.
 
-Because of this limitation, a correct division algorithm based on
-repeated subtraction cannot be properly terminated.
+Because of this limitation, division using repeated subtraction
+works correctly only when the result is an exact integer.
 
-As a result, the current implementation does not produce correct results
-and often returns 0.
+For non-divisible cases (e.g., 7 / 2), the program cannot terminate
+and results in an infinite loop.
 
 This limitation highlights how the expressiveness of an instruction set
 affects the correctness of algorithms.
@@ -65,8 +65,8 @@ affects the correctness of algorithms.
 ```rust
 let mut cpu = CPU::new();
 
-println!("2 + 3 = {}", cpu.run_add(2, 3));
-println!("5 - 2 = {}", cpu.run_sub(5, 2));
-println!("3 * 4 = {}", cpu.run_mul(3, 4));
-println!("10 / 2 = {}", cpu.run_div(10, 2));
-println!("7 / 2 = {}", cpu.run_div(7, 2));
+println!("2 + 3 = {}", cpu.run_add(2, 3));      // 5
+println!("5 - 2 = {}", cpu.run_sub(5, 2));      // 3
+println!("3 * 4 = {}", cpu.run_mul(3, 4));      // 12
+println!("10 / 2 = {}", cpu.run_div(10, 2));    // 5
+println!("7 / 2 = {}", cpu.run_div(7, 2));      // infinite loop
