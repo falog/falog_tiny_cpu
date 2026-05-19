@@ -125,10 +125,15 @@ impl CPU {
     }
 
     pub fn run_mul(&mut self, a: u8, b: u8) -> u8 {
+        // mul用レジスタ構成:
+        // r0: result
+        // r1: counter
+        // r2: value
+        // r3: constant 1
         const RESULT: usize = 0;
-        const COUNTER: usize = 1;
-        const VALUE: usize = 2;
-        const ONE: usize = 3;
+        const COUNTER: usize = 1; 
+        const VALUE: usize = 2;    
+        const ONE: usize = 3;       
         const LOOP: usize = 0;
         const HLT_ADDR: usize = 4;
 
@@ -175,7 +180,11 @@ impl CPU {
         if b == 0 {
             panic!("division by zero");
         }
-
+        // div用レジスタ構成:
+        // r0: result
+        // r1: counter
+        // r2: divisor
+        // r3: constant 1
         const RESULT: usize = 0;
         const COUNTER: usize = 1;
         const VALUE: usize = 2;
