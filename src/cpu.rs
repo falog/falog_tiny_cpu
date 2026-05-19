@@ -1,4 +1,4 @@
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 #[derive(Debug, Clone, Copy)]
 enum Opcode {
@@ -12,16 +12,27 @@ enum Opcode {
     Hlt,
 }
 
+// 命令は3byte固定: [opcode, op1, op2]
+// PCはバイト単位で進む（通常は +3）
+// ジャンプ系は命令インデックスを受け取り、内部で *3 する
 impl Opcode {
     fn to_byte(self) -> u8 {
         match self {
+            // 0: r1 = r1 + r2
             Opcode::Add => 0,
+            // 1: r1 = r1 - r2
             Opcode::Sub => 1,
+            // 2: r1 = mem[addr]
             Opcode::Ld => 2,
+            // 3: mem[addr] = r1
             Opcode::St => 3,
+            // 4: PC = addr * 3
             Opcode::Jmp => 4,
+            // 5: if r == 0 { PC = addr * 3 } else { PC += 3 }
             Opcode::Je => 5,
+            // 6: r1 = r2
             Opcode::Mov => 6,
+            // 7: halt
             Opcode::Hlt => 7,
         }
     }
@@ -52,7 +63,6 @@ pub struct CPU {
     regs: [u8; 4],
     pc: usize,
     mem: [u8; 256],
-    zero_flag: bool,
     halted: bool,
 }
 
@@ -62,20 +72,22 @@ impl CPU {
             regs: [0; 4],
             pc: 0,
             mem: [0; 256],
-            zero_flag: false,
             halted: false,
         }
     }
 
     pub fn run_add(&mut self, a: u8, b: u8) -> u8 {
-        self.set_reg(0, a);
-        self.set_reg(1, b);
+        const R0: usize = 0;
+        const R1: usize = 1;
+
+        self.set_reg(R0, a);
+        self.set_reg(R1, b);
 
         self.load_program(&[
             Instruction {
                 opcode: Opcode::Add,
-                op1: 0,
-                op2: 1,
+                op1: R0 as u8,
+                op2: R1 as u8,
             },
             Instruction {
                 opcode: Opcode::Hlt,
@@ -85,18 +97,21 @@ impl CPU {
         ]);
 
         self.run();
-        self.get_reg(0)
+        self.get_reg(R0)
     }
 
     pub fn run_sub(&mut self, a: u8, b: u8) -> u8 {
-        self.set_reg(0, a);
-        self.set_reg(1, b);
+        const R0: usize = 0;
+        const R1: usize = 1;
+
+        self.set_reg(R0, a);
+        self.set_reg(R1, b);
 
         self.load_program(&[
             Instruction {
                 opcode: Opcode::Sub,
-                op1: 0,
-                op2: 1,
+                op1: R0 as u8,
+                op2: R1 as u8,
             },
             Instruction {
                 opcode: Opcode::Hlt,
@@ -106,36 +121,45 @@ impl CPU {
         ]);
 
         self.run();
-        self.get_reg(0)
+        self.get_reg(R0)
     }
 
     pub fn run_mul(&mut self, a: u8, b: u8) -> u8 {
-        self.set_reg(0, 0);
-        self.set_reg(1, b);
-        self.set_reg(2, a);
-        self.set_reg(3, 1);
+        const RESULT: usize = 0;
+        const COUNTER: usize = 1;
+        const VALUE: usize = 2;
+        const ONE: usize = 3;
+        const LOOP: usize = 0;
+        const HLT_ADDR: usize = 4;
+
+        self.set_reg(RESULT, 0);
+        self.set_reg(COUNTER, b);
+        self.set_reg(VALUE, a);
+        self.set_reg(ONE, 1);
 
         self.load_program(&[
+            // LOOP:
             Instruction {
                 opcode: Opcode::Add,
-                op1: 0,
-                op2: 2,
+                op1: RESULT as u8,
+                op2: VALUE as u8,
             },
             Instruction {
                 opcode: Opcode::Sub,
-                op1: 1,
-                op2: 3,
+                op1: COUNTER as u8,
+                op2: ONE as u8,
             },
             Instruction {
                 opcode: Opcode::Je,
-                op1: 1,
-                op2: 12,
+                op1: COUNTER as u8,
+                op2: HLT_ADDR as u8,
             },
             Instruction {
                 opcode: Opcode::Jmp,
                 op1: 0,
-                op2: 0,
+                op2: LOOP as u8,
             },
+            // HLT:
             Instruction {
                 opcode: Opcode::Hlt,
                 op1: 0,
@@ -144,44 +168,58 @@ impl CPU {
         ]);
 
         self.run();
-        self.get_reg(0)
+        self.get_reg(RESULT)
     }
 
     pub fn run_div(&mut self, a: u8, b: u8) -> u8 {
-        self.set_reg(0, 0);
-        self.set_reg(1, a);
-        self.set_reg(2, b);
-        self.set_reg(3, 1);
+        if b == 0 {
+            panic!("division by zero");
+        }
+
+        const RESULT: usize = 0;
+        const COUNTER: usize = 1;
+        const VALUE: usize = 2;
+        const ONE: usize = 3;
+        const LOOP: usize = 0;
+        const HLT_ADDR: usize = 4;
+
+        self.set_reg(RESULT, 0);
+        self.set_reg(COUNTER, a);
+        self.set_reg(VALUE, b);
+        self.set_reg(ONE, 1);
 
         self.load_program(&[
+            // LOOP:
             Instruction {
                 opcode: Opcode::Sub,
-                op1: 1,
-                op2: 2,
+                op1: COUNTER as u8,
+                op2: VALUE as u8,
             },
             Instruction {
                 opcode: Opcode::Add,
-                op1: 0,
-                op2: 3,
+                op1: RESULT as u8,
+                op2: ONE as u8,
             },
             Instruction {
                 opcode: Opcode::Je,
-                op1: 1,
-                op2: 12,
+                op1: COUNTER as u8,
+                op2: HLT_ADDR as u8,
             },
             Instruction {
                 opcode: Opcode::Jmp,
                 op1: 0,
-                op2: 0,
+                op2: LOOP as u8,
             },
+            // HLT:
             Instruction {
                 opcode: Opcode::Hlt,
                 op1: 0,
                 op2: 0,
             },
         ]);
+
         self.run();
-        self.get_reg(0)
+        self.get_reg(RESULT)
     }
 
     fn set_reg(&mut self, idx: usize, val: u8) {
@@ -210,7 +248,6 @@ impl CPU {
 
         self.pc = 0;
         self.halted = false;
-        self.zero_flag = false;
     }
 
     fn fetch(&self) -> Instruction {
@@ -248,7 +285,6 @@ impl CPU {
                 let r2 = self.reg(inst.op2);
                 let result = self.regs[r1].wrapping_add(self.regs[r2]);
                 self.regs[r1] = result;
-                self.zero_flag = result == 0;
                 self.pc += 3;
             }
             Opcode::Sub => {
@@ -256,7 +292,6 @@ impl CPU {
                 let r2 = self.reg(inst.op2);
                 let result = self.regs[r1].wrapping_sub(self.regs[r2]);
                 self.regs[r1] = result;
-                self.zero_flag = result == 0;
                 self.pc += 3;
             }
             Opcode::Ld => {
@@ -272,13 +307,13 @@ impl CPU {
                 self.pc += 3;
             }
             Opcode::Jmp => {
-                self.pc = self.addr(inst.op2);
+                self.pc = self.addr(inst.op2) * 3;
             }
             Opcode::Je => {
                 let r = self.reg(inst.op1);
 
                 if self.regs[r] == 0 {
-                    self.pc = self.addr(inst.op2);
+                    self.pc = self.addr(inst.op2) * 3;
                 } else {
                     self.pc += 3;
                 }
@@ -299,14 +334,14 @@ impl CPU {
         let inst = self.fetch();
 
         if DEBUG {
-            println!("PC={} {:?} \n-----------------------------------------------\nR0={} R1={} R2={} R3={} | ZF={}",
+            println!("PC={} {:?} \n-----------------------------------------------\nR0={} R1={} R2={} R3={} \n",
                 self.pc,
                 inst,
                 self.regs[0],
                 self.regs[1],
                 self.regs[2],
                 self.regs[3],
-                self.zero_flag
+
             );
         }
 
